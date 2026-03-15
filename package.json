@@ -1,41 +1,68 @@
 {
   "name": "greenfield",
   "displayName": "GreenField",
-  "description": "Detects unused JSON fields between frontend and backend, surfacing wasted network payload and serialization energy as inline diagnostics.",
+  "description": "Detects unused JSON fields between frontend and backend codebases.",
   "version": "0.0.1",
+  "publisher": "greenfield",
   "engines": {
-    "vscode": "^1.85.0"
+    "vscode": "^1.90.0"
   },
-  "categories": ["Linters"],
-  "activationEvents": ["onStartupFinished"],
-  "main": "./out/extension.js",
+  "categories": [
+    "Other",
+    "Linters"
+  ],
+  "activationEvents": [
+    "onStartupFinished",
+    "onCommand:greenfield.scanWorkspace",
+    "workspaceContains:**/*"
+  ],
+  "main": "./dist/extension.js",
   "contributes": {
     "commands": [
       {
-        "command": "greenfield.analyze",
-        "title": "GreenField: Analyze Dead Fields"
+        "command": "greenfield.scanWorkspace",
+        "title": "GreenField: Scan Workspace"
       },
       {
-        "command": "greenfield.showPanel",
-        "title": "GreenField: Show Report Panel"
+        "command": "greenfield.showEndpoints",
+        "title": "GreenField: Show Endpoint Registry"
       }
-    ]
+    ],
+    "configuration": {
+      "title": "GreenField",
+      "properties": {
+        "greenfield.include": {
+          "type": "array",
+          "default": [
+            "**/*.{ts,tsx,js,jsx,py,java}"
+          ],
+          "description": "Glob patterns for files scanned by GreenField."
+        },
+        "greenfield.exclude": {
+          "type": "array",
+          "default": [
+            "**/node_modules/**",
+            "**/dist/**",
+            "**/build/**",
+            "**/.next/**",
+            "**/coverage/**",
+            "**/__pycache__/**",
+            "**/.venv/**",
+            "**/target/**"
+          ],
+          "description": "Glob patterns excluded from GreenField scans."
+        }
+      }
+    }
   },
   "scripts": {
-    "vscode:prepublish": "npm run compile",
     "compile": "tsc -p ./",
     "watch": "tsc -watch -p ./",
-    "test": "node ./out/test/suite/index.js"
+    "package": "vsce package"
   },
   "devDependencies": {
-    "@types/vscode": "^1.85.0",
-    "@types/node": "^20.0.0",
-    "typescript": "^5.3.0"
-  },
-  "dependencies": {
-    "ts-morph": "^21.0.0",
-    "tree-sitter": "^0.21.0",
-    "tree-sitter-python": "^0.21.0",
-    "tree-sitter-java": "^0.21.0"
+    "@types/node": "^20.12.12",
+    "@types/vscode": "^1.110.0",
+    "typescript": "^5.4.5"
   }
 }
