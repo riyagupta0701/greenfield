@@ -2,7 +2,32 @@
 // Detects fetch, axios, useQuery, HttpClient calls → extracts URL + request body shape
 import { Endpoint } from '../types';
 
-export function detectFrontendEndpoints(files: string[]): Partial<Endpoint>[] {
-  // TODO: parse frontend files for API call patterns
-  return [];
+import { normalizeUrl } from "./urlNormalizer"
+
+export function detectFrontendEndpoints(code: string) {
+
+  const endpoints = []
+
+  const fetchRegex = /fetch\(['"`](.*?)['"`]/g
+  const axiosRegex = /axios\.(get|post|put|delete)\(['"`](.*?)['"`]/g
+
+  for (const match of code.matchAll(fetchRegex)) {
+
+    endpoints.push({
+      method: "GET",
+      path: normalizeUrl(match[1])
+    })
+
+  }
+
+  for (const match of code.matchAll(axiosRegex)) {
+
+    endpoints.push({
+      method: match[1].toUpperCase(),
+      path: normalizeUrl(match[2])
+    })
+
+  }
+
+  return endpoints
 }

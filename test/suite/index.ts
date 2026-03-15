@@ -1,6 +1,5 @@
 // Test suite entry point
-import * as path from 'path';
-import { glob } from 'glob';
+// import statements removed as they are unused
 
 export function run(): Promise<void> {
   // TODO: configure and run Mocha test suite
