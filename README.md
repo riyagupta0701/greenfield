@@ -64,9 +64,11 @@ Builds a **canonical registry of API endpoints** by analysing both frontend and 
 | `/api/users/${id}` | `/api/users/:param` |
 
 
-## 2. Field Extractor (TypeScript)
+## 2. Field Extractor
 
-Uses `ts-morph` to extract fields from frontend request bodies. Detects inline object literals in:
+Extracts the fields a backend *sends* in responses, and the fields a frontend *sends* in request bodies.
+
+**TypeScript/JavaScript** — uses `ts-morph` AST. Detects inline object literals in:
 
 ```ts
 axios.post('/api/users', { username, email, password })
@@ -77,9 +79,34 @@ fetch('/api/orders', {
 })
 ```
 
-## 3. Usage Tracker (TypeScript)
+**Python** — regex-based. Detects response fields from:
 
-Uses `ts-morph` to detect which response fields the frontend actually reads. Covers all access patterns:
+```python
+return jsonify({"userId": 1, "email": "a@b.com"})   # Flask
+return {"status": "ok", "token": "abc"}              # FastAPI direct dict
+return JSONResponse(content={"id": 1, "name": "x"}) # FastAPI JSONResponse
+
+class UserResponse(BaseModel):   # Pydantic model fields
+    userId: int
+    displayName: str
+```
+
+**Java** — regex-based. Detects response fields from:
+
+```java
+private String firstName;           // DTO class fields
+@JsonProperty("phone_number")       // annotation overrides Java identifier
+private String phoneNumber;
+
+Map.of("userId", id, "name", name)  // Map.of()
+map.put("displayName", value)       // HashMap.put()
+```
+
+## 3. Usage Tracker
+
+Detects which fields are actually *read* on the receiving side.
+
+**TypeScript/JavaScript** — uses `ts-morph` AST. Covers all frontend access patterns:
 
 ```ts
 response.id                          // direct property access
@@ -89,6 +116,28 @@ const { createdAt: joinedAt } = res  // aliased destructuring → tracks "create
 const { address: { city } } = res    // nested destructuring
 `Hello ${user.firstName}`            // template literals
 <p>{user.displayName}</p>            // JSX
+```
+
+**Python** — regex-based. Detects which request fields the backend reads:
+
+```python
+request.json.get('username')         # direct get
+request.json['email']                # bracket access
+data = request.json; data.get('x')   # indirect via variable
+request.form.get('title')            # form fields
+request.args.get('page')             # query params
+
+def create(item: UserModel): ...     # Pydantic param — all model fields marked as accessed
+```
+
+**Java** — regex-based. Detects which request fields the backend reads:
+
+```java
+@RequestBody UserDto req             // getter calls: req.getFirstName() → "firstName"
+req.firstName                        // direct field access
+@RequestParam("query") String q      // explicit param name
+@RequestParam String category        // param variable name used as field name
+request.getParameter("authToken")    // servlet API
 ```
 
 ## 4. Diff Engine
@@ -110,11 +159,10 @@ CO₂ coefficient from Aslan et al. (2018), surfaced transparently as an estimat
 # Supported Stack
 
 | Layer | Support |
-|---|---|---|
-| Frontend | TypeScript / JavaScript |
-| Backend | Node.js (Express) |
-| HTTP clients | fetch / axios / doFetch |
-| API Style | REST / JSON |
+|---|---|
+| Frontend | TypeScript / JavaScript (React, Vue, fetch / axios / doFetch) |
+| Backend | Python (Flask, FastAPI), Java (Spring Boot), Node.js (Express) |
+| API style | REST / JSON |
 
 
 # Repository Structure
@@ -151,7 +199,7 @@ scripts/
 
 test/
  ├ __mocks__/vscode.ts
- └ suite/     # 46 tests across 3 suites
+ └ suite/     # 102 tests across 7 suites
 ```
 
 
@@ -227,6 +275,37 @@ npm test          # compile + run test suite
 npm run watch     # incremental compile on save
 F5                # launch Extension Development Host
 ```
+
+
+# Running the Tests
+
+```bash
+npm test
+```
+
+This compiles the test build (`tsconfig.test.json` → `dist-test/`) and then runs all test files matching `dist-test/test/suite/**/*.test.js` with Mocha.
+
+**Run a single test file:**
+
+```bash
+npx mocha 'dist-test/test/suite/pythonFieldExtractor.test.js' --timeout 10000
+```
+
+Replace the filename with any of the test files below.
+
+**Test suites:**
+
+| File | What it tests |
+|---|---|
+| `test/suite/fieldExtractor.test.ts` | TypeScript/JS frontend field extraction (axios, fetch + JSON.stringify) |
+| `test/suite/usageTracker.test.ts` | TypeScript/JS frontend usage tracking (destructuring, optional chaining, JSX) |
+| `test/suite/pythonFieldExtractor.test.ts` | Python backend field extraction (Flask `jsonify`, FastAPI `JSONResponse`, Pydantic `BaseModel`) |
+| `test/suite/pythonUsageTracker.test.ts` | Python backend usage tracking (`request.json.get()`, bracket access, indirect access, Pydantic params) |
+| `test/suite/javaFieldExtractor.test.ts` | Java backend field extraction (DTO fields, `@JsonProperty` override, `Map.of()`, `.put()`) |
+| `test/suite/javaUsageTracker.test.ts` | Java backend usage tracking (`@RequestBody` getters + direct access, `@RequestParam`, `getParameter()`) |
+| `test/suite/integration.test.ts` | End-to-end pipeline: endpoint mapping → field extraction → usage tracking → dead field diff |
+
+**Test fixtures** (real source files the parsers run against) are in `test/suite/fixtures/unit/`.
 
 # Real-World Evaluation
 
