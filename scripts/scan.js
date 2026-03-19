@@ -7,6 +7,7 @@ const fs = require('fs');
 const { mapEndpoints } = require('../dist-test/src/endpointMapper');
 const { extractFields } = require('../dist-test/src/parsers/typescript/fieldExtractor');
 const { trackUsage } = require('../dist-test/src/parsers/typescript/usageTracker');
+const { extractBackendResponseFields } = require('../dist-test/src/parsers/typescript/backendFieldExtractor');
 const { extractFields: pyExtractFields } = require('../dist-test/src/parsers/python/fieldExtractor');
 const { trackUsage: pyTrackUsage } = require('../dist-test/src/parsers/python/usageTracker');
 const { extractFields: javaExtractFields } = require('../dist-test/src/parsers/java/fieldExtractor');
@@ -40,7 +41,11 @@ const javaFiles = collectFiles(path.resolve(targetDir), ['.java']);
 for (const f of files) {
   if (!sharedProject.getSourceFile(f)) sharedProject.addSourceFileAtPath(f);
 }
-const fileContents = files.map(f => ({ path: f, content: fs.readFileSync(f, 'utf8') }));
+const fileContents = [
+  ...files.map(f => ({ path: f, content: fs.readFileSync(f, 'utf8') })),
+  ...pyFiles.map(f => ({ path: f, content: fs.readFileSync(f, 'utf8') })),
+  ...javaFiles.map(f => ({ path: f, content: fs.readFileSync(f, 'utf8') })),
+];
 
 console.log(`\n Scanned ${files.length} TypeScript / ${pyFiles.length} Python / ${javaFiles.length} Java files in ${path.resolve(targetDir)}\n`);
 
@@ -76,20 +81,12 @@ const backendResponseByFile = {};
 for (const f of files) {
   const content = fs.readFileSync(f, 'utf8');
   const isBackendFile = /(?:app|router)\.(get|post|put|delete|patch)\s*\(/.test(content) ||
-                        /res\.(json|send)\s*\(\s*\{/.test(content);
+                        /res\.(json|send)\s*\(/.test(content);
   if (!isBackendFile) continue;
   try {
-    const resJsonRegex = /res\.(?:json|send)\(\s*\{([^}]+)\}/g;
-    const fieldsFound = [];
-    for (const match of content.matchAll(resJsonRegex)) {
-      const propRegex = /^\s*([a-zA-Z_$][a-zA-Z0-9_$]*)\s*(?::|,|$)/gm;
-      for (const propMatch of match[1].matchAll(propRegex)) {
-        const name = propMatch[1].trim();
-        if (name) fieldsFound.push(name);
-      }
-    }
-    if (fieldsFound.length > 0) {
-      backendResponseByFile[f] = [...new Set(fieldsFound)];
+    const defined = extractBackendResponseFields(f, sharedProject);
+    if (defined.length > 0) {
+      backendResponseByFile[f] = defined.map(d => d.name);
       console.log(`    ${path.relative(targetDir, f)}: [${backendResponseByFile[f].join(', ')}]`);
     }
   } catch(e) { /* skip */ }
@@ -114,33 +111,7 @@ for (const f of files) {
 }
 if (totalTrackedFields === 0) console.log('    (none found)');
 
-// 5. Dead field diff
-function computeDiff(defined, accessed) {
-  const accessedNames = new Set(accessed.map(f => f.name));
-  return defined.filter(f => !accessedNames.has(f.name));
-}
-
-const allAccessed = Object.values(allTrackedByFile).flat();
-const FRONTEND_ACCESSED_NAMES = new Set(allAccessed.map(f => f.name));
-const allBackendFields = [...new Set(Object.values(backendResponseByFile).flat())];
-
-console.log('\n Dead field analysis (backend response → frontend read):');
-let backendDead = 0;
-const backendTotal = allBackendFields.length;
-
-if (backendTotal > 0) {
-  const dead = allBackendFields.filter(n => !FRONTEND_ACCESSED_NAMES.has(n));
-  const used = allBackendFields.filter(n =>  FRONTEND_ACCESSED_NAMES.has(n));
-  backendDead = dead.length;
-  console.log(`\n    Backend sends:  [${allBackendFields.join(', ')}]`);
-  console.log(`    Frontend reads: [${used.join(', ') || 'none'}]`);
-  if (dead.length > 0) console.log(`    DEAD:        [${dead.join(', ')}]`);
-  else                 console.log(`    All response fields are read by frontend`);
-} else {
-  console.log('    (no backend response fields extracted)');
-}
-
-// 5b. Python backend scan
+// 5b. Python backend — populate backendResponseByFile before diff
 if (pyFiles.length > 0) {
   console.log('\n Python backend field extraction (response fields defined):');
   let pyResponseCount = 0;
@@ -150,6 +121,7 @@ if (pyFiles.length > 0) {
       const response = defined.filter(d => d.side === 'response');
       if (response.length > 0) {
         pyResponseCount += response.length;
+        backendResponseByFile[f] = response.map(d => d.name);
         console.log(`    ${path.relative(targetDir, f)}`);
         response.forEach(d => console.log(`       + ${d.name}  (line ${d.definedAt.split(':').pop()})`));
       }
@@ -171,7 +143,7 @@ if (pyFiles.length > 0) {
   if (pyUsageCount === 0) console.log('    (none found)');
 }
 
-// 5c. Java backend scan
+// 5c. Java backend — populate backendResponseByFile before diff
 if (javaFiles.length > 0) {
   console.log('\n Java backend field extraction (response fields defined):');
   let javaResponseCount = 0;
@@ -181,6 +153,7 @@ if (javaFiles.length > 0) {
       const response = defined.filter(d => d.side === 'response');
       if (response.length > 0) {
         javaResponseCount += response.length;
+        backendResponseByFile[f] = response.map(d => d.name);
         console.log(`    ${path.relative(targetDir, f)}`);
         response.forEach(d => console.log(`       + ${d.name}  (line ${d.definedAt.split(':').pop()})`));
       }
@@ -200,6 +173,27 @@ if (javaFiles.length > 0) {
     } catch(e) { /* skip */ }
   }
   if (javaUsageCount === 0) console.log('    (none found)');
+}
+
+// 5. Dead field diff
+const allAccessed = Object.values(allTrackedByFile).flat();
+const FRONTEND_ACCESSED_NAMES = new Set(allAccessed.map(f => f.name));
+const allBackendFields = [...new Set(Object.values(backendResponseByFile).flat())];
+
+console.log('\n Dead field analysis (backend response → frontend read):');
+let backendDead = 0;
+const backendTotal = allBackendFields.length;
+
+if (backendTotal > 0) {
+  const dead = allBackendFields.filter(n => !FRONTEND_ACCESSED_NAMES.has(n));
+  const used = allBackendFields.filter(n =>  FRONTEND_ACCESSED_NAMES.has(n));
+  backendDead = dead.length;
+  console.log(`\n    Backend sends:  [${allBackendFields.join(', ')}]`);
+  console.log(`    Frontend reads: [${used.join(', ') || 'none'}]`);
+  if (dead.length > 0) console.log(`    DEAD:        [${dead.join(', ')}]`);
+  else                 console.log(`    All response fields are read by frontend`);
+} else {
+  console.log('    (no backend response fields extracted)');
 }
 
 // 6. Summary

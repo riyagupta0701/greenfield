@@ -8,3 +8,11 @@ dist-test/
 coverage/
 out/
 package-lock.json
+
+# Generated benchmark projects — recreate with:
+#   npx ts-node test/benchmarks/synthetic/generate.ts
+test/benchmarks/synthetic/project-*/
+
+# Temporary hand-crafted stubs used to test the RQ1 eval script in isolation.
+# Delete these (and this entry) once Person B/C parsers are called directly in run.ts.
+test/benchmarks/synthetic/**/fields.json

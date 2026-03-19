@@ -4,6 +4,7 @@
 import { Field, FieldSet } from '../types';
 
 export function computeDiff(defined: Field[], accessed: Field[]): Field[] {
-  // TODO: return fields present in defined but absent in accessed
-  return [];
+  const accessedNames = new Set(accessed.map(f => f.name));
+  return defined.filter(f => !accessedNames.has(f.name));
 }
+
