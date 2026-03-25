@@ -15,5 +15,6 @@
       "vscode": ["./test/__mocks__/vscode.ts"]
     }
   },
-  "include": ["src", "test"]
+  "include": ["src", "test"],
+  "exclude": ["test/benchmarks"]
 }

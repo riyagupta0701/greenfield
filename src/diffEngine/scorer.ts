@@ -4,6 +4,11 @@
 import { Field } from '../types';
 
 export function scoreWaste(field: Field, avgBytes: number, dailyRequests: number): number {
-  // TODO: compute waste score and attach CO₂ estimate
-  return 0;
+  return avgBytes * dailyRequests;
 }
+
+// Separately, for CO₂ display in the UI:
+export function estimateCO2kWh(wastedBytesPerDay: number): number {
+  return wastedBytesPerDay * 0.000000006;
+}
+

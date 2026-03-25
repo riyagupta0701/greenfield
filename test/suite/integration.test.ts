@@ -11,17 +11,12 @@ import { mapEndpoints } from '../../src/endpointMapper';
 import { extractFields } from '../../src/parsers/typescript/fieldExtractor';
 import { trackUsage } from '../../src/parsers/typescript/usageTracker';
 import { Field } from '../../src/types';
+import { computeDiff } from '../../src/diffEngine/differ';
 
 // __dirname at runtime = dist-test/test/suite — fixtures are in the source tree
 const FIXTURE_ROOT = path.resolve(__dirname, '../../../test/suite/fixtures/integration');
 const FRONTEND = path.join(FIXTURE_ROOT, 'frontend', 'orders.ts');
 const BACKEND  = path.join(FIXTURE_ROOT, 'backend',  'orders.ts');
-
-// Inline diff until Person D's implementation lands
-function computeDiff(defined: Field[], accessed: Field[]): Field[] {
-  const accessedNames = new Set(accessed.map(f => f.name));
-  return defined.filter(f => !accessedNames.has(f.name));
-}
 
 function readFixture(p: string) {
   return { path: p, content: fs.readFileSync(p, 'utf8') };
