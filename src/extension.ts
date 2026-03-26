@@ -104,7 +104,7 @@ export function activate(context: vscode.ExtensionContext) {
           try {
             return extractFn(f.fsPath)
               .filter(field => field.side === 'response' && !allAccessedNames.has(field.name))
-              .map(field => ({ ...field, wasteScore: scoreWaste(field, 32, 10_000) }));
+              .map(field => ({ ...field, wasteScore: scoreWaste(field) }));
           }
           catch { return []; }
         });
@@ -118,7 +118,7 @@ export function activate(context: vscode.ExtensionContext) {
       };
 
       const totalGlobalDead = Object.values(globalAnalysis).reduce((n, arr) => n + arr.length, 0);
-      const totalGlobalWasteBytes = totalGlobalDead * 32 * 10_000;
+      const totalGlobalWasteBytes = Object.values(globalAnalysis).flat().reduce((s, f) => s + (f.wasteScore ?? 0), 0);
 
       const totalDead = fieldSets.reduce((n, fs) => n + (fs.deadFields?.length ?? 0), 0) + totalGlobalDead;
       const totalWasteBytes = fieldSets.reduce((n, fs) =>
