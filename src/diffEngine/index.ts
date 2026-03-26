@@ -4,11 +4,11 @@ import { computeDiff } from './differ';
 import { scoreWaste } from './scorer';
 
 export { computeDiff } from './differ';
-export { scoreWaste, estimateCO2kWh } from './scorer';
+export { scoreWaste, estimateCO2kWh, estimateFieldBytes, estimateDailyRequests } from './scorer';
 
-export function runDiff(fieldSet: FieldSet, avgBytes = 32, dailyRequests = 10_000): FieldSet {
+export function runDiff(fieldSet: FieldSet): FieldSet {
   const dead = computeDiff(fieldSet.definedFields, fieldSet.accessedFields);
-  const scored = dead.map(f => ({ ...f, wasteScore: scoreWaste(f, avgBytes, dailyRequests) }));
+  const endpointPattern = fieldSet.endpoint?.pattern;
+  const scored = dead.map(f => ({ ...f, wasteScore: scoreWaste(f, endpointPattern) }));
   return { ...fieldSet, deadFields: scored };
 }
-

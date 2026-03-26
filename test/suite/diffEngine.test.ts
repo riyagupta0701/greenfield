@@ -1,12 +1,13 @@
 /**
  * Unit tests — Person D's Diff Engine + Sustainability Scorer
  *
- * Covers: computeDiff, scoreWaste, estimateCO2kWh, runDiff
+ * Covers: computeDiff, scoreWaste, estimateFieldBytes, estimateDailyRequests,
+ *         estimateCO2kWh, runDiff
  */
 
 import * as assert from 'assert';
 import { computeDiff } from '../../src/diffEngine/differ';
-import { scoreWaste, estimateCO2kWh } from '../../src/diffEngine/scorer';
+import { scoreWaste, estimateCO2kWh, estimateFieldBytes, estimateDailyRequests, KWH_PER_BYTE } from '../../src/diffEngine/scorer';
 import { runDiff } from '../../src/diffEngine';
 import { Field, FieldSet, Endpoint } from '../../src/types';
 
@@ -23,7 +24,7 @@ const ENDPOINT: Endpoint = {
   frontendFiles: ['client.ts'],
 };
 
-// computeDiff 
+// computeDiff
 
 describe('computeDiff', () => {
   it('returns all defined fields when none are accessed', () => {
@@ -81,35 +82,114 @@ describe('computeDiff', () => {
   });
 });
 
-// scoreWaste
+// estimateFieldBytes
 
-describe('scoreWaste', () => {
-  it('returns avgBytes × dailyRequests', () => {
-    const result = scoreWaste(field('email'), 32, 10_000);
-    assert.strictEqual(result, 320_000);
+describe('estimateFieldBytes', () => {
+  it('assigns ~5 bytes to boolean-named fields', () => {
+    assert.strictEqual(estimateFieldBytes('isActive'), 5);
+    assert.strictEqual(estimateFieldBytes('hasPermission'), 5);
   });
 
-  it('returns 0 when avgBytes is 0', () => {
-    assert.strictEqual(scoreWaste(field('email'), 0, 10_000), 0);
+  it('assigns ~38 bytes to UUID fields', () => {
+    assert.strictEqual(estimateFieldBytes('userId'), 38);
+    assert.strictEqual(estimateFieldBytes('recordUuid'), 38);
   });
 
-  it('returns 0 when dailyRequests is 0', () => {
-    assert.strictEqual(scoreWaste(field('email'), 32, 0), 0);
+  it('assigns ~26 bytes to timestamp fields', () => {
+    assert.strictEqual(estimateFieldBytes('createdAt'), 26);
+    assert.strictEqual(estimateFieldBytes('updatedAt'), 26);
   });
 
-  it('scales linearly with request volume', () => {
-    const low  = scoreWaste(field('f'), 32, 1_000);
-    const high = scoreWaste(field('f'), 32, 10_000);
-    assert.strictEqual(high / low, 10);
+  it('assigns ~27 bytes to email fields', () => {
+    assert.strictEqual(estimateFieldBytes('email'), 27);
+    assert.strictEqual(estimateFieldBytes('userEmail'), 27);
+  });
+
+  it('assigns ~52 bytes to URL fields', () => {
+    assert.strictEqual(estimateFieldBytes('avatarUrl'), 52);
+    assert.strictEqual(estimateFieldBytes('profileLink'), 52);
+  });
+
+  it('assigns ~66 bytes to token/hash fields', () => {
+    assert.strictEqual(estimateFieldBytes('accessToken'), 66);
+    assert.strictEqual(estimateFieldBytes('passwordHash'), 66);
+  });
+
+  it('returns a positive number for any field name', () => {
+    const names = ['x', 'foo', 'someRandomField', 'a1b2c3'];
+    for (const n of names) {
+      assert.ok(estimateFieldBytes(n) > 0, `expected positive bytes for "${n}"`);
+    }
   });
 });
 
-// estimateCO2kWh 
+// estimateDailyRequests
+
+describe('estimateDailyRequests', () => {
+  it('returns high volume for health-check endpoints', () => {
+    assert.ok(estimateDailyRequests('GET /health') > 50_000);
+    assert.ok(estimateDailyRequests('GET /ping') > 50_000);
+  });
+
+  it('returns elevated volume for auth endpoints', () => {
+    const auth = estimateDailyRequests('POST /api/login');
+    const general = estimateDailyRequests('GET /api/users');
+    assert.ok(auth > general);
+  });
+
+  it('returns low volume for admin endpoints', () => {
+    const admin = estimateDailyRequests('GET /admin/users');
+    const general = estimateDailyRequests('GET /api/users');
+    assert.ok(admin < general);
+  });
+
+  it('returns lower volume for write endpoints than reads', () => {
+    const write = estimateDailyRequests('POST /api/orders');
+    const read  = estimateDailyRequests('GET /api/orders');
+    assert.ok(write < read);
+  });
+
+  it('returns 10,000 for a generic endpoint', () => {
+    assert.strictEqual(estimateDailyRequests('GET /api/products'), 10_000);
+  });
+
+  it('returns 10,000 when no pattern is provided', () => {
+    assert.strictEqual(estimateDailyRequests(undefined), 10_000);
+  });
+});
+
+// scoreWaste
+
+describe('scoreWaste', () => {
+  it('returns a positive number for any field', () => {
+    assert.ok(scoreWaste(field('email')) > 0);
+  });
+
+  it('uses email byte estimate × default daily requests', () => {
+    const expected = estimateFieldBytes('email') * estimateDailyRequests('GET /api/test');
+    assert.strictEqual(scoreWaste(field('email'), 'GET /api/test'), expected);
+  });
+
+  it('produces higher scores for health endpoints than admin endpoints', () => {
+    const health = scoreWaste(field('version'), 'GET /health');
+    const admin  = scoreWaste(field('version'), 'GET /admin/users');
+    assert.ok(health > admin);
+  });
+
+  it('produces higher scores for URL fields than boolean fields', () => {
+    const url  = scoreWaste(field('avatarUrl'));
+    const bool = scoreWaste(field('isActive'));
+    assert.ok(url > bool);
+  });
+});
+
+// estimateCO2kWh
 
 describe('estimateCO2kWh', () => {
-  it('uses the 0.000000006 kWh/byte coefficient (Aslan et al. 2018)', () => {
-    const result = estimateCO2kWh(1_000_000);
-    assert.strictEqual(result, 1_000_000 * 0.000000006);
+  it('uses the Aslan 2018 coefficient: 0.06 kWh/GB = 6e-11 kWh/byte', () => {
+    assert.strictEqual(KWH_PER_BYTE, 6e-11);
+    const result = estimateCO2kWh(1_000_000_000); // 1 GB
+    assert.strictEqual(result, 0.06);             // Should equal 0.06 kWh
   });
 
   it('returns 0 for 0 wasted bytes', () => {
@@ -123,7 +203,7 @@ describe('estimateCO2kWh', () => {
   });
 });
 
-// runDiff 
+// runDiff
 
 describe('runDiff', () => {
   it('returns a FieldSet with deadFields populated', () => {
@@ -143,9 +223,19 @@ describe('runDiff', () => {
       definedFields:  [field('secret')],
       accessedFields: [],
     };
-    const result = runDiff(fs, 32, 10_000);
-    assert.ok(result.deadFields![0].wasteScore > 0);
-    assert.strictEqual(result.deadFields![0].wasteScore, 320_000);
+    const result = runDiff(fs);
+    assert.ok(result.deadFields![0].wasteScore! > 0);
+  });
+
+  it('wasteScore reflects field name and endpoint pattern', () => {
+    const fs: FieldSet = {
+      endpoint:      ENDPOINT,
+      definedFields:  [field('accessToken')],
+      accessedFields: [],
+    };
+    const result = runDiff(fs);
+    const expected = estimateFieldBytes('accessToken') * estimateDailyRequests(ENDPOINT.pattern);
+    assert.strictEqual(result.deadFields![0].wasteScore, expected);
   });
 
   it('returns empty deadFields when all fields are accessed', () => {
@@ -166,16 +256,6 @@ describe('runDiff', () => {
     };
     runDiff(original);
     assert.strictEqual(original.deadFields, undefined);
-  });
-
-  it('uses provided avgBytes and dailyRequests for scoring', () => {
-    const fs: FieldSet = {
-      endpoint:      ENDPOINT,
-      definedFields:  [field('x')],
-      accessedFields: [],
-    };
-    const result = runDiff(fs, 100, 500);
-    assert.strictEqual(result.deadFields![0].wasteScore, 50_000); // 100 × 500
   });
 
   it('preserves all original FieldSet properties', () => {
