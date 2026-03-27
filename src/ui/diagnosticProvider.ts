@@ -69,7 +69,6 @@ export class GreenFieldDiagnosticProvider {
     }
   }
 
-  //O(1) performance lookup
   getAssociatedField(uri: vscode.Uri, position: vscode.Position): Field | undefined {
     const docData = this.documentData.get(uri.toString());
     if (!docData) return undefined;

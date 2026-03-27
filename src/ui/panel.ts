@@ -35,7 +35,9 @@ export class GreenFieldPanel {
         preserveFocus: false
       });
       
-      const pos = new vscode.Position(line, 0);
+      const maxLine = doc.lineCount > 0 ? doc.lineCount - 1 : 0;
+      const safeLine = Number.isFinite(line) ? Math.min(Math.max(0, line), maxLine) : 0;
+      const pos = new vscode.Position(safeLine, 0);
       const selection = new vscode.Selection(pos, pos);
       editor.selection = selection;
       editor.revealRange(new vscode.Range(pos, pos), vscode.TextEditorRevealType.InCenter);

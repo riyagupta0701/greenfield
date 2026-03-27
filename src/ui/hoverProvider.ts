@@ -13,18 +13,17 @@ export class GreenFieldHoverProvider implements vscode.HoverProvider {
     
     if (field) {
       const markdown = new vscode.MarkdownString();
-      markdown.isTrusted = true;
       markdown.appendMarkdown(`**🌱 GreenField: Dead Field Detected**\n\n`);
       
       const otherSide = field.side === 'response' ? 'frontend' : 'backend';
       markdown.appendMarkdown(`\`${field.name}\` is included in the ${field.side} payload but never accessed by the ${otherSide}.\n\n`);
       
-      const co2Estimate = (field.wasteScore * 1000 * 0.000000006).toExponential(2); // very rough estimate assuming 1k req/day
+      const energyEstimate = (field.wasteScore * 1000 * 0.000000006).toExponential(2); // very rough estimate of energy use assuming 1k req/day
       
       markdown.appendMarkdown(`---\n`);
       markdown.appendMarkdown(`**🔋 Sustainability Impact**\n\n`);
       markdown.appendMarkdown(`* **Waste:** ~${field.wasteScore.toFixed(2)} bytes/req\n`);
-      markdown.appendMarkdown(`* **Est. CO₂/day:** ~${co2Estimate} kWh based on Aslan et al. (2018)\n\n`);
+      markdown.appendMarkdown(`* **Est. energy use/day:** ~${energyEstimate} kWh based on Aslan et al. (2018)\n\n`);
       markdown.appendMarkdown(`Removing this field saves serialisation overhead and reduces network payload.`);
       
       return new vscode.Hover(markdown);

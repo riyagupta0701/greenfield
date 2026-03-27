@@ -5,7 +5,7 @@ import { GreenFieldDiagnosticProvider } from "./ui/diagnosticProvider";
 import { GreenFieldHoverProvider } from "./ui/hoverProvider";
 import { GreenFieldPanel } from "./ui/panel";
 import { GreenFieldQuickFixProvider } from "./ui/quickFix";
-import { FieldSet, Location } from "./types";
+import { FieldSet } from "./types";
 // import { getDiffs } from "./diffEngine"; // Assuming diff engine will be imported later
 
 export function activate(context: vscode.ExtensionContext) {
@@ -37,6 +37,12 @@ export function activate(context: vscode.ExtensionContext) {
       // NOTE: Temporarily disabled real diff engine for MVP testing.
       // E.g. const fieldSets = await getDiffs(document.uri);
       
+      // Quickly bail out for non-code files or unsupported languages to improve save performance
+      const supportedLangs = ['typescript', 'javascript', 'typescriptreact', 'javascriptreact', 'python', 'java'];
+      if (!supportedLangs.includes(document.languageId)) {
+        return;
+      }
+
       const docText = document.getText();
       
       // MOCK FIXTURE: Only trigger fake squiggle if 'lastLoginIp' is actually still in the text!
