@@ -22,7 +22,7 @@ def get_status():
 # Pattern B: direct dict return (FastAPI)
 @app.get('/api/health')
 def health_check():
-    return {"healthy": True}
+    return {"healthy": True, "uptime": 123}
 
 # Pattern E: Pydantic model param — conservative tracking
 @app.post('/api/users')
