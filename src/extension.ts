@@ -170,8 +170,8 @@ export function activate(context: vscode.ExtensionContext) {
 
       const langSummary = langCounts.map(l => `${l.lang}: ${l.files} files`).join(' | ');
 
-      // Update UI components with exact endpoint matches
-      diagnosticProvider.update(fieldSets);
+      // Update UI components with exact endpoint matches and global matches
+      diagnosticProvider.update(fieldSets, globalAnalysis);
 
       const kb = (totalWasteBytes / 1000).toFixed(1);
       status.text = `⚡ GreenField: ${endpoints.length} endpoints | ${totalDead} dead fields | ~${kb} KB/req wasted`;

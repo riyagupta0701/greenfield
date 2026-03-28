@@ -52,37 +52,49 @@ export class GreenFieldDiagnosticProvider {
     this.diagnosticCollection = vscode.languages.createDiagnosticCollection('greenfield');
   }
 
-  update(fieldSets: FieldSet[]): void {
+  update(fieldSets: FieldSet[], globalAnalysis?: Record<string, Field[]>): void {
     this.diagnosticCollection.clear();
     this.documentData.clear();
 
+    const allDeadFields: Field[] = [];
+
+    // 1. Gather exact mapped dead fields
     for (const fs of fieldSets) {
       if (!fs.deadFields) continue;
-      for (const field of fs.deadFields) {
-        const locInfo = getFieldLocation(field);
-        if (!locInfo) continue;
-        
-        // Normalize the URI string right away so it matches VS Code's internal serialization
-        const normalizedUri = locInfo.uri;
-        const uriString = normalizedUri.toString();
-        
-        let docData = this.documentData.get(uriString);
-        
-        if (!docData) {
-          docData = { uri: normalizedUri, diagnostics: [], fields: [] };
-          this.documentData.set(uriString, docData);
-        }
+      allDeadFields.push(...fs.deadFields);
+    }
 
-        const diagnostic = new vscode.Diagnostic(
-          locInfo.range,
-          `GreenField: '${field.name}' is defined but never accessed by the ${field.side === 'response' ? 'frontend' : 'backend'}. Estimated waste: ~${field.wasteScore.toFixed(2)} bytes/req`,
-          vscode.DiagnosticSeverity.Warning
-        );
-        diagnostic.code = 'greenfield-dead-field';
-        
-        docData.diagnostics.push(diagnostic);
-        docData.fields.push(field);
+    // 2. Gather globally analyzed dead fields
+    if (globalAnalysis) {
+      for (const fields of Object.values(globalAnalysis)) {
+        allDeadFields.push(...fields);
       }
+    }
+
+    for (const field of allDeadFields) {
+      const locInfo = getFieldLocation(field);
+      if (!locInfo) continue;
+      
+      // Normalize the URI string right away so it matches VS Code's internal serialization
+      const normalizedUri = locInfo.uri;
+      const uriString = normalizedUri.toString();
+      
+      let docData = this.documentData.get(uriString);
+      
+      if (!docData) {
+        docData = { uri: normalizedUri, diagnostics: [], fields: [] };
+        this.documentData.set(uriString, docData);
+      }
+
+      const diagnostic = new vscode.Diagnostic(
+        locInfo.range,
+        `GreenField: '${field.name}' is defined but never accessed by the ${field.side === 'response' ? 'frontend' : 'backend'}. Estimated waste: ~${field.wasteScore.toFixed(2)} bytes/req`,
+        vscode.DiagnosticSeverity.Warning
+      );
+      diagnostic.code = 'greenfield-dead-field';
+      
+      docData.diagnostics.push(diagnostic);
+      docData.fields.push(field);
     }
 
     // Apply squiggles using the safely stored URI objects
