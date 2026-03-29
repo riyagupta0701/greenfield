@@ -21,6 +21,20 @@ Modern web apps frequently transmit more data than the frontend consumes. If a b
 | API      | REST / JSON |
 | Workspace | VS Code monorepo or multi-root workspace |
 
+---
+
+## Reproducibility
+
+### Prerequisites
+
+- Node.js ≥ 18, npm ≥ 9
+
+```bash
+git clone <repo-url>
+cd greenfield
+npm install
+npm test              # compiles dist-test/ and runs all unit tests
+```
 
 ---
 
@@ -128,19 +142,6 @@ test/
 ```
 
 ---
-
-## Reproducibility
-
-### Prerequisites
-
-- Node.js ≥ 18, npm ≥ 9
-
-```bash
-git clone <repo-url>
-cd greenfield
-npm install
-npm test              # compiles dist-test/ and runs all unit tests
-```
 
 ### RQ1 — Accuracy on Synthetic Benchmarks
 
