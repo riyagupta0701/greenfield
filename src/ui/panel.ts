@@ -157,12 +157,13 @@ export class GreenFieldPanel {
         const safeName = this.escapeHtml(df.name);
         const safeUri = this.escapeHtml(fileUri);
         const safeFileName = this.escapeHtml(fileName);
-        const wasteScoreWithCommas = formatWithCommas(df.wasteScore);
+        const wasteScoreKB = df.wasteScore / 1000;
+        const wasteScoreKBWithCommas = formatWithCommas(Math.round(wasteScoreKB));
         return `
           <tr>
             <td><code>${safeFileName}</code></td>
             <td><code>${safeName}</code></td>
-            <td class="waste-score">${wasteScoreWithCommas} bytes</td>
+            <td class="waste-score">${wasteScoreKBWithCommas} KB</td>
             <td>
               <button class="reveal-btn" data-uri="${safeUri}" data-line="${startLine}">
                 Jump to file
@@ -203,12 +204,13 @@ export class GreenFieldPanel {
         const safeName = this.escapeHtml(df.name);
         const safeUri = this.escapeHtml(fileUri);
         const safeFileName = this.escapeHtml(fileName);
-        const wasteScoreWithCommas = formatWithCommas(df.wasteScore || 0);
+        const wasteScoreKB = (df.wasteScore || 0) / 1000;
+        const wasteScoreKBWithCommas = formatWithCommas(Math.round(wasteScoreKB));
         return `
           <tr>
             <td><code>${safeFileName}</code></td>
             <td><code>${safeName}</code></td>
-            <td class="waste-score">${wasteScoreWithCommas} bytes</td>
+            <td class="waste-score">${wasteScoreKBWithCommas} KB</td>
             <td>
               <button class="reveal-btn" data-uri="${safeUri}" data-line="${startLine}">
                 Jump to file
