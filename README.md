@@ -2,7 +2,7 @@
 
 A VS Code extension that detects **unused ("dead") JSON fields** between frontend and backend codebases. Fields the backend sends but the frontend never reads — and vice versa — are flagged as inline diagnostics with estimated wasted bytes and CO₂ impact.
 
-> TU Delft "Hacking Sustainability" course project.
+> TU Delft "Hacking Sustainability"  project for Sustainable Software Engineering.
 
 ---
 
@@ -21,16 +21,6 @@ Modern web apps frequently transmit more data than the frontend consumes. If a b
 | API      | REST / JSON |
 | Workspace | VS Code monorepo or multi-root workspace |
 
----
-
-## Installation
-
-```bash
-git clone <repo-url>
-cd greenfield
-npm install
-npm run compile
-```
 
 ---
 
@@ -178,18 +168,15 @@ Each project has a backend file (TS, Python, Java, or Go), a frontend TS file, a
 
 > Mattermost uses a two-level sub-router pattern that prevents full URL reconstruction from a single file, so per-endpoint analysis is unavailable. Results use the global fallback (all Go response fields vs all frontend-accessed names).
 
-**open-webui** (Svelte/TypeScript / Python FastAPI):
+**freeCodeCamp** (TypeScript):
 
 | Metric | Value |
 |--------|-------|
-| Files scanned | 72 TS / 223 Py |
-| Endpoints mapped | 637 |
-| TS dead response fields | 85 / 106 (80%) |
-| Est. wasted bytes/request | ~2,040 bytes |
-| Est. CO₂ waste @10k req/d | ~122.4 Wh/day |
+| Files scanned | 921 (TS) |
+| Endpoints mapped | 7 |
+| TS dead response fields | 3/12 (25%) |
+| Est. wasted bytes/request | ~72 bytes |
+| Est. CO₂ waste @10k req/d | ~4.32 Wh/day |
+> The analysis mode used for freeCodeCamp was per-endpoint.
 
 ---
-
-## License
-
-MIT
