@@ -112,25 +112,37 @@ const allAccessedNames = new Set(
   tsFiles.flatMap(f => { try { return trackUsage(f, sharedProject); } catch { return []; } }).map(f => f.name)
 );
 
-function globalDeadFields(extractFn, langFiles) {
-  return langFiles.flatMap(f => {
+function globalAnalysisForLang(extractFn, langFiles) {
+  let total = 0;
+  const dead = langFiles.flatMap(f => {
     try {
-      return extractFn(f)
-        .filter(field => field.side === 'response' && !allAccessedNames.has(field.name))
+      const all = extractFn(f).filter(field => field.side === 'response');
+      total += all.length;
+      return all
+        .filter(field => !allAccessedNames.has(field.name))
         .map(field => ({ ...field, wasteScore: scoreWaste(field) }));
     } catch { return []; }
   });
+  return { dead, total };
 }
 
+const rawGlobal = {
+  ts:   globalAnalysisForLang(f => extractBackendResponseFields(f, sharedProject), tsFiles),
+  py:   globalAnalysisForLang(pyExtractFields,   pyFiles),
+  java: globalAnalysisForLang(javaExtractFields, javaFiles),
+  go:   globalAnalysisForLang(goExtractFields,   goFiles),
+};
+
 const globalAnalysis = {
-  ts:   globalDeadFields(f => extractBackendResponseFields(f, sharedProject), tsFiles),
-  py:   globalDeadFields(pyExtractFields,   pyFiles),
-  java: globalDeadFields(javaExtractFields, javaFiles),
-  go:   globalDeadFields(goExtractFields,   goFiles),
+  ts:   rawGlobal.ts.dead,
+  py:   rawGlobal.py.dead,
+  java: rawGlobal.java.dead,
+  go:   rawGlobal.go.dead,
 };
 
 const globalDeadFields_ = Object.values(globalAnalysis).flat();
 const globalDeadTotal   = globalDeadFields_.length;
+const globalResponseTotal = Object.values(rawGlobal).reduce((n, r) => n + r.total, 0);
 
 if (globalDeadTotal > 0) {
   console.log(`\n Global fallback dead fields: ${globalDeadTotal}`);
@@ -144,6 +156,8 @@ if (globalDeadTotal > 0) {
 // ─── 4. Summary ───────────────────────────────────────────────────────────────
 
 const totalDead = endpointDeadTotal + globalDeadTotal;
+const totalResponseFields =
+  fieldSets.reduce((n, fs) => n + (fs.definedFields?.length ?? 0), 0) + globalResponseTotal;
 
 const endpointWaste = fieldSets.reduce((n, fs) =>
   n + (fs.deadFields?.reduce((s, f) => s + (f.wasteScore ?? 0), 0) ?? 0), 0);
@@ -158,9 +172,10 @@ console.log('══════════════════════�
 console.log(`  Target:                    ${path.resolve(targetDir)}`);
 console.log(`  Files scanned:             ${tsFiles.length} TS / ${pyFiles.length} Py / ${javaFiles.length} Java / ${goFiles.length} Go`);
 console.log(`  Endpoints mapped:          ${endpoints.length}`);
+console.log(`  Response fields scanned:   ${totalResponseFields}`);
 console.log(`  Dead fields (per-endpoint):${endpointDeadTotal}`);
 console.log(`  Dead fields (global):      ${globalDeadTotal}`);
-console.log(`  Total dead fields:         ${totalDead}`);
+console.log(`  Total dead fields:         ${totalDead} / ${totalResponseFields} (${totalResponseFields > 0 ? Math.round(totalDead / totalResponseFields * 100) : 0}%)`);
 console.log(`  Est. wasted bytes/day:     ~${totalWasteBytes} bytes (~${(totalWasteBytes / 1000).toFixed(1)} KB)`);
 console.log(`  Est. CO₂ waste @10k req/d: ~${co2Wh.toFixed(4)} Wh/day`);
 console.log('════════════════════════════════════════════\n');
