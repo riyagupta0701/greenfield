@@ -176,7 +176,7 @@ Each project has a backend file (TS, Python, Java, or Go), a frontend TS file, a
 |--------|-------|
 | Files scanned | 1,085 TS |
 | Endpoints mapped | 7 |
-| Dead fields | 16 / 16 (100%) |
+| Dead fields | 16 / 55 (29%) |
 | Est. wasted bytes/day | ~3,520 KB |
 | Est. CO₂ waste | ~0.21 Wh/day |
 | Analysis mode | Global fallback |
