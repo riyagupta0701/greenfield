@@ -161,10 +161,11 @@ Each project has a backend file (TS, Python, Java, or Go), a frontend TS file, a
 
 | Metric | Value |
 |--------|-------|
-| Files scanned | 4,796 TS / 1,962 Go |
+| Files scanned | 4,796 TS / 1,966 Go |
 | Endpoints mapped | 457 |
-| Dead fields | 4,178 / 8,344 (~50%) |
-| Est. wasted bytes/day | ~1.22 GB |
+| Response fields scanned | 8,344 |
+| Dead fields | 4,178 |
+| Est. wasted bytes/day | ~1,218,340.0 KB |
 | Est. CO₂ waste | ~73.1 Wh/day |
 | Analysis mode | Global fallback |
 
@@ -176,9 +177,10 @@ Each project has a backend file (TS, Python, Java, or Go), a frontend TS file, a
 |--------|-------|
 | Files scanned | 1,085 TS |
 | Endpoints mapped | 7 |
-| Dead fields | 16 / 55 (29%) |
+| Response fields scanned | 55 |
+| Dead fields | 16 |
 | Est. wasted bytes/day | ~3,520 KB |
 | Est. CO₂ waste | ~0.21 Wh/day |
 | Analysis mode | Global fallback |
 
----
+> Like Mattermost, freeCodeCamp also uses the global fallback analysis.
