@@ -112,40 +112,19 @@ Diff Engine           — dead_fields = defined − accessed; scores waste in by
 VS Code Diagnostics   — inline squiggles, hover messages, status bar summary
 ```
 
-**Waste scoring:**
-```
-waste_score  = avg_field_bytes × daily_requests
-CO₂/day      = wasted_bytes/day × 0.000000006 kWh/byte   (Aslan et al. 2018)
-```
+## Waste scoring:
 
-Default assumptions: 32 bytes/field, 10,000 requests/day.
+$$N_{\text{dead\_fields}} = \text{Defined}(\text{backend response}) - \text{Accessed}(\text{frontend})$$
 
-### Repository Structure
+$$\text{waste\_score} = N_{\text{dead\_fields}} \times \hat{b} \times R$$
 
-```
-src/
- ├ endpointMapper/     # route detection + URL normalization
- ├ diffEngine/         # differ.ts, scorer.ts, index.ts
- ├ parsers/
- │   ├ typescript/     # fieldExtractor.ts, usageTracker.ts, backendFieldExtractor.ts
- │   ├ python/         # fieldExtractor.ts, usageTracker.ts
- │   ├ java/           # fieldExtractor.ts, usageTracker.ts
- │   └ go/             # fieldExtractor.ts, usageTracker.ts
- ├ ui/                 # statusBar.ts
- ├ types.ts            # shared Endpoint, Field, FieldSet interfaces
- └ extension.ts        # activation entry point
+$$\text{CO}_2\text{/day} = \text{waste\_score} \times \gamma$$
 
-test/
- ├ __mocks__/vscode.ts
- ├ suite/
- │   ├ fixtures/       # real source files used as parser inputs
- │   └ *.test.ts
- └ benchmarks/synthetic/
-```
+where $\hat{b}$ is the estimated bytes per field (heuristic, 5–80 bytes based on field name), $R$ is the estimated daily request volume (tiered by endpoint pattern), and $\gamma = 6.9 \times 10^{-8}\ \text{gCO}_2\text{e/byte}$ is the carbon intensity of data transfer (Aslan et al. 2018, fixed-line networks, excluding user devices).
 
----
 
-### RQ1 — Accuracy on Synthetic Benchmarks
+
+### Accuracy on Synthetic Benchmarks
 
 ```bash
 # Generate 20 synthetic benchmark projects
@@ -157,7 +136,7 @@ npx ts-node evaluation/run.ts
 
 Each project has a backend file (TS, Python, Java, or Go), a frontend TS file, and an `expected.json` ground-truth.
 
-### RQ2 — Real-World Prevalence
+### Real-World Prevalence
 
 **Mattermost** (React + Redux / Go):
 
