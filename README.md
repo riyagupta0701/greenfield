@@ -122,32 +122,9 @@ $$\text{CO}_2\text{/day} = \text{waste\_score} \times \gamma$$
 
 where $\hat{b}$ is the estimated bytes per field (heuristic, 5–80 bytes based on field name), $R$ is the estimated daily request volume (tiered by endpoint pattern), and $\gamma = 6.9 \times 10^{-8}\ \text{gCO}_2\text{e/byte}$ is the carbon intensity of data transfer (Aslan et al. 2018, fixed-line networks, excluding user devices).
 
-### Repository Structure
 
-```
-src/
- ├ endpointMapper/     # route detection + URL normalization
- ├ diffEngine/         # differ.ts, scorer.ts, index.ts
- ├ parsers/
- │   ├ typescript/     # fieldExtractor.ts, usageTracker.ts, backendFieldExtractor.ts
- │   ├ python/         # fieldExtractor.ts, usageTracker.ts
- │   ├ java/           # fieldExtractor.ts, usageTracker.ts
- │   └ go/             # fieldExtractor.ts, usageTracker.ts
- ├ ui/                 # statusBar.ts
- ├ types.ts            # shared Endpoint, Field, FieldSet interfaces
- └ extension.ts        # activation entry point
 
-test/
- ├ __mocks__/vscode.ts
- ├ suite/
- │   ├ fixtures/       # real source files used as parser inputs
- │   └ *.test.ts
- └ benchmarks/synthetic/
-```
-
----
-
-### RQ1 — Accuracy on Synthetic Benchmarks
+### Accuracy on Synthetic Benchmarks
 
 ```bash
 # Generate 20 synthetic benchmark projects
@@ -159,7 +136,7 @@ npx ts-node evaluation/run.ts
 
 Each project has a backend file (TS, Python, Java, or Go), a frontend TS file, and an `expected.json` ground-truth.
 
-### RQ2 — Real-World Prevalence
+### Real-World Prevalence
 
 **Mattermost** (React + Redux / Go):
 
